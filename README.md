@@ -4,6 +4,8 @@ I got an idea for a game, and realised [Global Game Jam 25](https://globalgameja
 
 > Paint blobs have invaded the canvas, but you have your shotgun.
 
+Play it [here](https://mostlymaths.net/shotgun-pollock/)
+
 ---
 
 Inspired by [Shotgun King](https://shotgun-king.com) and [Ape Out](https://www.apeout.com), and reusing many pieces of code or ideas I have had in my generative art or other stuff.
