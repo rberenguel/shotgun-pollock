@@ -131,7 +131,7 @@ const sketch = (s) => {
 
     assigned = around(thingy);
 
-    addWalls(Math.max(arena.h / arena.cw, arena.w / arena.cw));
+    addWalls(2 * Math.max(arena.h / arena.cw, arena.w / arena.cw));
     addEnemies(Math.floor(Math.sqrt((arena.w * arena.h) / (cw * cw))));
 
     state = "play";
@@ -307,10 +307,12 @@ const sketch = (s) => {
             y: b.y,
             vx: -vn * Math.cos(j),
             vy: -vn * Math.sin(j),
-            d: 0.9 - Math.random() * 0.2,
+            d: 0.9 - Math.random() * 0.4,
             c: e.c,
-            a: j, //b.a,
-            s: vn / 3 + Math.random() * 8, // TODO factor size of grid
+            a: j,
+            s0: vn / 10,
+            s: vn / 10,
+            s1: vn / 3 + Math.random() * 8,
             age: 0,
           };
           splats.push(splat);
@@ -326,7 +328,7 @@ const sketch = (s) => {
       const c = [sp.c[0] * 255, sp.c[1] * 255, sp.c[2] * 255, 255 - sp.age];
       s.push();
       s.fill(...c);
-      s.stroke(...c); // TODO Stroke of the hit thing!
+      s.stroke(...c);
       s.translate(sp.x, sp.y);
       s.rotate(sp.a);
       s.ellipse(0, 0, 3 * sp.s, sp.s);
@@ -335,17 +337,36 @@ const sketch = (s) => {
   };
 
   const animateSplats = () => {
-    // TODO: same as bullet after all
     for (let s of splats.filter((s) => !s.stopped)) {
       const nx = s.x + s.vx,
         ny = s.y + s.vy;
-      if (crossedWall(s.x, s.y, nx, ny)) {
-        // TODO Will need to set x and y to the wall
+      const crossing = crossedWall(s.x, s.y, nx, ny);
+      if (crossing) {
+        // Setting the x and y of the wall is not enough, because splats
+        // are longer than that. A good, but annoying solution to be would:
+        // - Create a mask of cells,
+        // - Remove any cell that is "beyond a wall",
+        // - Mask the drawn splats.
         s.vx = 0;
         s.vy = 0;
+        const { d, ix, iy } = crossing;
+        if (d == "E") {
+          s.x = ix * cw - cw;
+        }
+        if (d == "W") {
+          s.x = ix * cw + cw;
+        }
+        if (d == "N") {
+          s.y = iy * cw - cw;
+        }
+        if (d == "S") {
+          s.y = iy * cw + cw;
+        }
         s.stopped = true;
         return;
       }
+      const sd = (s.s0 * 1) / s.d + 0.7 * s.s1 * s.d;
+      s.s = sd > s.s1 ? s.s1 : sd;
       s.x = nx;
       s.y = ny;
       s.vx *= s.d;
@@ -367,11 +388,12 @@ const sketch = (s) => {
     const nix = Math.floor(nx / cw);
     const niy = Math.floor(ny / cw);
     if (pix < nix) {
-      // Moves eastward. Assume it's not jumping more than one grid for now (TODO)
+      // Moves eastward.
       const wat = wallsMap[pix]?.[piy];
       const nwat = wallsMap[nix]?.[niy];
       if (wat?.includes("E") || nwat?.includes("W")) {
-        return true;
+        console.log("EASTWARD");
+        return { d: "E", ix: pix + 2, iy: piy }; // Why 2? It works, but it is very unexpected
       }
     }
     if (nix < pix) {
@@ -379,7 +401,8 @@ const sketch = (s) => {
       const wat = wallsMap[pix]?.[piy];
       const nwat = wallsMap[nix]?.[niy];
       if (wat?.includes("W") || nwat?.includes("E")) {
-        return true;
+        console.log("WESTWARD");
+        return { d: "W", ix: pix - 1, iy: piy };
       }
     }
     if (piy < niy) {
@@ -387,7 +410,7 @@ const sketch = (s) => {
       const wat = wallsMap[pix]?.[piy];
       const nwat = wallsMap[nix]?.[niy];
       if (wat?.includes("S") || nwat?.includes("N")) {
-        return true;
+        return { d: "S", ix: pix, iy: piy };
       }
     }
     if (niy < piy) {
@@ -395,7 +418,7 @@ const sketch = (s) => {
       const wat = wallsMap[pix]?.[piy];
       const nwat = wallsMap[nix]?.[niy];
       if (wat?.includes("N") || nwat?.includes("S")) {
-        return true;
+        return { d: "N", ix: pix, iy: piy + 1 };
       }
     }
     return false;
@@ -427,7 +450,6 @@ const sketch = (s) => {
 
   const drawThingy = () => {
     s.push();
-    // TODO this 50 needs to be a constant somewhere
     s.translate(cw / 2, cw / 2); // Would center at 0,0 grid
     s.translate(cw * thingy.ix, cw * thingy.iy);
     s.rotate(thingy.a);
@@ -785,7 +807,6 @@ const sketch = (s) => {
       availableBullets -= 1;
       shoot(x, y, thingy.a, 3, 3);
       thingy.aiming = false;
-      // TODO: smooth this
       thingy.aimingAnimation = 0.0;
       turn();
     },
